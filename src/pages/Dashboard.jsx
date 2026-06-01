@@ -371,7 +371,7 @@ const Dashboard = () => {
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
             <LiveWeatherRadar />
-            <div onClick={goToWeatherPage} className="cursor-pointer">
+            <div>
               <WeatherSummaryCard />
             </div>
           </div>
