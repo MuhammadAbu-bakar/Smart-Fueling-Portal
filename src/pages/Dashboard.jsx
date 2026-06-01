@@ -9,7 +9,7 @@ import LiveWeatherRadar from "../components/LiveWeatherRadar";
 import SitesByCategoryTable from "../components/SitesByCategoryTable";
 import FuelSummary from "../components/FuelSummary";
 import FuelDistribution from "../components/FuelDistribution";
-import SideBar from "../../src/components/SideBar";
+import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 import WeatherAlertDashboard from "../components/WeatherAlertDashboard";
 import { fetchGoogleSheetData } from "/backend/GoogleSheetApi";
