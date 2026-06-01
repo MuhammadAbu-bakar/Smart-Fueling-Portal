@@ -3,14 +3,14 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchGoogleSheetData } from "/backend/GoogleSheetApi";
-import { 
-  TowerControl, 
-  AlertTriangle, 
-  Search, 
-  LayoutDashboard, 
+import {
+  TowerControl,
+  AlertTriangle,
+  Search,
+  LayoutDashboard,
   Menu,
   Map as MapIcon,
-  ZapIcon
+  ZapIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import L from "leaflet";
@@ -18,22 +18,29 @@ import L from "leaflet";
 // Fix Leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
 // Custom Icons
 const greenIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
 
 const redIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
@@ -53,7 +60,7 @@ const SitesMap = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const master = await fetchGoogleSheetData("Master Sheet", "A:U");
+        const master = await fetchGoogleSheetData("Master Sheet", "A:AO");
         if (master && master.length > 1) {
           setMasterData(master.slice(1));
         }
@@ -65,12 +72,13 @@ const SitesMap = () => {
     loadData();
   }, []);
 
-  // ================= COLUMN INDICES =================
-  const COL_SITE_ID = 0;        // A
-  const COL_REGION = 6;         // G (C-1 / C-6)
-  const COL_STATUS = 9;         // J
-  const COL_REMAINING_FUEL = 8; // I
-  const COL_LAT_LONG = 17;      // R
+  // ================= COLUMN INDICES (updated) =================
+  const COL_SITE_ID = 0; // A
+  const COL_REGION = 6; // G
+  const COL_STATUS = 34; // AI (was J = 9)
+  const COL_SEVERITY = 24; // Y (new)
+  const COL_REMAINING_FUEL = 33; // AH
+  const COL_LAT_LONG = 40; // AO
 
   // ================= PROCESS SITES =================
   const allSites = useMemo(() => {
@@ -79,16 +87,21 @@ const SitesMap = () => {
         const latLongStr = row[COL_LAT_LONG]?.toString().trim();
         if (!latLongStr) return null;
 
-        const coords = latLongStr.split(/[, ]+/).map(c => parseFloat(c.trim()));
-        if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) return null;
+        const coords = latLongStr
+          .split(/[, ]+/)
+          .map((c) => parseFloat(c.trim()));
+        if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1]))
+          return null;
 
         const region = (row[COL_REGION] || "").toString().trim().toUpperCase();
         const status = (row[COL_STATUS] || "").toString().trim().toUpperCase();
+        const severity = (row[COL_SEVERITY] || "").toString().trim();
 
         return {
           id: row[COL_SITE_ID]?.toString().trim() || `Site-${index}`,
           region: region || "UNKNOWN",
           status,
+          severity,
           remainingFuel: parseFloat(row[COL_REMAINING_FUEL]) || 0,
           position: [coords[0], coords[1]],
         };
@@ -99,19 +112,17 @@ const SitesMap = () => {
   // Filter sites based on selected region
   const sites = useMemo(() => {
     if (selectedRegion === "All") return allSites;
-    return allSites.filter(site => site.region === selectedRegion);
+    return allSites.filter((site) => site.region === selectedRegion);
   }, [allSites, selectedRegion]);
-
-  // Red Markers (Low Fuel / NOK)
-  const redSites = sites.filter(s => s.status === "NOK" || s.remainingFuel < 50);
 
   // Search Handler
   const handleSearch = () => {
     if (!searchTerm.trim()) return;
-    const found = allSites.find(s => s.id.toLowerCase() === searchTerm.toLowerCase().trim());
+    const found = allSites.find(
+      (s) => s.id.toLowerCase() === searchTerm.toLowerCase().trim(),
+    );
     if (found) {
       setTargetSite(found);
-      // Auto switch to that site's region if needed
       if (found.region !== selectedRegion && found.region !== "UNKNOWN") {
         setSelectedRegion(found.region);
       }
@@ -134,7 +145,9 @@ const SitesMap = () => {
   return (
     <div className="min-h-screen bg-[#0f1325] text-white flex overflow-hidden">
       {/* SIDEBAR */}
-      <aside className={`fixed md:relative z-20 w-72 bg-[#13182b] border-r border-gray-800 p-6 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <aside
+        className={`fixed md:relative z-20 w-72 bg-[#13182b] border-r border-gray-800 p-6 transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+      >
         <div className="flex items-center gap-3 mb-10">
           <div className="bg-blue-500 p-2 rounded-xl">
             <TowerControl size={24} />
@@ -146,15 +159,24 @@ const SitesMap = () => {
         </div>
 
         <nav className="space-y-3">
-          <Link to="/dashboard" className="w-full flex items-center gap-3 text-gray-400 hover:bg-[#1a213a] px-4 py-3 rounded-xl transition">
+          <Link
+            to="/dashboard"
+            className="w-full flex items-center gap-3 text-gray-400 hover:bg-[#1a213a] px-4 py-3 rounded-xl transition"
+          >
             <LayoutDashboard size={20} /> Dashboard
           </Link>
-          
-          <Link to="/map" className="w-full flex items-center gap-3 bg-blue-600/20 text-blue-400 px-4 py-3 rounded-xl">
+
+          <Link
+            to="/map"
+            className="w-full flex items-center gap-3 bg-blue-600/20 text-blue-400 px-4 py-3 rounded-xl"
+          >
             <MapIcon size={20} /> Sites Map
           </Link>
 
-          <Link to="/rif-dashboard" className="w-full flex items-center gap-3 text-gray-400 hover:bg-[#1a213a] px-4 py-3 rounded-xl transition">
+          <Link
+            to="/rif-dashboard"
+            className="w-full flex items-center gap-3 text-gray-400 hover:bg-[#1a213a] px-4 py-3 rounded-xl transition"
+          >
             <ZapIcon size={20} /> RIF Alarms
           </Link>
         </nav>
@@ -162,22 +184,27 @@ const SitesMap = () => {
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-10 md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/50 z-10 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* MAIN CONTENT */}
       <main className="flex-1 p-6 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)} 
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               className="md:hidden bg-[#171c33] p-3 rounded-xl"
             >
               <Menu size={22} />
             </button>
             <div>
               <h1 className="text-3xl font-bold">Sites Map</h1>
-              <p className="text-gray-400">Real-time location of all fuel sites</p>
+              <p className="text-gray-400">
+                Real-time location of all fuel sites
+              </p>
             </div>
           </div>
 
@@ -190,8 +217,8 @@ const SitesMap = () => {
                   key={region}
                   onClick={() => setSelectedRegion(region)}
                   className={`px-5 py-2 text-sm font-medium rounded-[10px] transition ${
-                    selectedRegion === region 
-                      ? "bg-blue-600 text-white" 
+                    selectedRegion === region
+                      ? "bg-blue-600 text-white"
                       : "text-gray-400 hover:bg-[#1f253f]"
                   }`}
                 >
@@ -202,7 +229,8 @@ const SitesMap = () => {
           </div>
 
           <div className="bg-[#171c33] px-5 py-3 rounded-xl border border-gray-800 text-sm">
-            Total Sites: <span className="font-bold text-blue-400">{sites.length}</span>
+            Total Sites:{" "}
+            <span className="font-bold text-blue-400">{sites.length}</span>
           </div>
         </div>
 
@@ -217,7 +245,7 @@ const SitesMap = () => {
               placeholder="Search Site ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
               className="w-full bg-[#171c33] border border-gray-700 rounded-xl pl-11 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -243,7 +271,7 @@ const SitesMap = () => {
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; OpenStreetMap contributors'
+                attribution="&copy; OpenStreetMap contributors"
               />
 
               <FlyToTarget />
@@ -253,23 +281,43 @@ const SitesMap = () => {
                 <Marker
                   key={index}
                   position={site.position}
-                  icon={site.status === "NOK" || site.remainingFuel < 50 ? redIcon : greenIcon}
+                  icon={
+                    site.status === "NOK" || site.remainingFuel < 50
+                      ? redIcon
+                      : greenIcon
+                  }
                 >
                   <Popup>
                     <div className="min-w-[260px]">
                       <h3 className="font-bold text-xl mb-3 flex items-center gap-2">
                         {site.id}
-                        {(site.status === "NOK" || site.remainingFuel < 50) && 
-                          <AlertTriangle size={22} className="text-red-500" />}
+                        {(site.status === "NOK" || site.remainingFuel < 50) && (
+                          <AlertTriangle size={22} className="text-red-500" />
+                        )}
                       </h3>
                       <div className="space-y-2 text-sm">
-                        <p><strong>Region:</strong> {site.region}</p>
-                        <p><strong>Status:</strong> 
-                          <span className={site.status === "NOK" ? "text-red-500 font-semibold" : "text-green-500 font-semibold"}>
+                        <p>
+                          <strong>Region:</strong> {site.region}
+                        </p>
+                        <p>
+                          <strong>Status:</strong>
+                          <span
+                            className={
+                              site.status === "NOK"
+                                ? "text-red-500 font-semibold"
+                                : "text-green-500 font-semibold"
+                            }
+                          >
                             {site.status}
                           </span>
                         </p>
-                        <p><strong>Remaining Fuel:</strong> {site.remainingFuel.toFixed(0)} L</p>
+                        <p>
+                          <strong>Severity:</strong> {site.severity || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Remaining Fuel:</strong>{" "}
+                          {site.remainingFuel.toFixed(0)} L
+                        </p>
                       </div>
                     </div>
                   </Popup>
@@ -279,7 +327,7 @@ const SitesMap = () => {
           </div>
         )}
 
-        {/* Updated Legend */}
+        {/* Legend */}
         <div className="mt-4 flex flex-wrap gap-6 text-sm justify-center text-gray-400">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-green-500/30 border border-green-500 rounded"></div>
@@ -287,7 +335,7 @@ const SitesMap = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-red-500/30 border border-red-500 rounded"></div>
-            Low Fuel (less than 50L)
+            Low Fuel (less than 50L) or NOK Status
           </div>
           <div>Green = Normal &nbsp; | &nbsp; Red = Critical</div>
         </div>
