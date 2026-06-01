@@ -183,7 +183,7 @@ const WeatherSummaryCard = () => {
         }
 
         hourlyData.sort((a, b) => a.hour - b.hour);
-        setHourlyForecast(hourlyData.slice(0, 8));
+        setHourlyForecast(hourlyData.slice(0, 6)); // Reduced to 6 hours for compactness
       }
 
       if (data.daily && data.daily.time) {
@@ -480,14 +480,6 @@ const WeatherSummaryCard = () => {
         precipProb: 60,
         isBadWeather: true,
       },
-      {
-        time: "8PM",
-        hour: 20,
-        temperature: 62,
-        precipitation: "2.5",
-        precipProb: 80,
-        isBadWeather: true,
-      },
     ]);
 
     setWeatherStats((prev) => ({
@@ -505,7 +497,6 @@ const WeatherSummaryCard = () => {
     setWeatherStats((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      // UPDATED: range from A:U to A:AO
       const rows = await fetchGoogleSheetData("Master Sheet", "A:AO");
 
       if (!rows || rows.length === 0) {
@@ -515,15 +506,13 @@ const WeatherSummaryCard = () => {
       const dataRows = rows.slice(1);
 
       const sitesWithCoords = dataRows
-        // UPDATED: coordinates now at index 40 (column AO)
         .filter((row) => row[40] && row[40].trim())
         .map((row) => ({
           name: row[0],
           siteId: row[0],
-          coordinates: parseCoordinates(row[40]), // column AO
-          // UPDATED: fuel level now at index 33 (column AH)
+          coordinates: parseCoordinates(row[40]),
           fuelLevel: parseFloat(row[33]) || 0,
-          region: row[6] || "Unknown", // column G unchanged
+          region: row[6] || "Unknown",
         }))
         .filter((site) => site.coordinates !== null);
 
@@ -600,17 +589,17 @@ const WeatherSummaryCard = () => {
   if (weatherStats.isLoading || forecastLoading) {
     return (
       <div className="bg-gradient-to-br from-[#11172e] to-[#0c1124] rounded-2xl border border-gray-700/70 overflow-hidden shadow-lg flex flex-col h-full">
-        <div className="bg-[#0a0f20] px-4 py-2.5 border-b border-gray-700 flex justify-between items-center">
+        <div className="bg-[#0a0f20] px-3 py-2 border-b border-gray-700 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <AlertTriangle size={18} className="text-yellow-400" />
-            <h2 className="font-semibold text-white">WEATHER PREDICTION</h2>
+            <AlertTriangle size={17} className="text-yellow-400" />
+            <h2 className="font-semibold text-sm text-white">
+              WEATHER PREDICTION
+            </h2>
           </div>
         </div>
-        <div className="flex-1 p-5 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-gray-400">
-            Loading forecast from Open-Meteo...
-          </span>
+        <div className="flex-1 p-4 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-gray-400 text-xs">Loading...</span>
         </div>
       </div>
     );
@@ -618,26 +607,29 @@ const WeatherSummaryCard = () => {
 
   return (
     <div className="bg-gradient-to-br from-[#11172e] to-[#0c1124] rounded-2xl border border-gray-700/70 overflow-hidden shadow-lg flex flex-col h-full">
-      <div className="bg-[#0a0f20] px-4 py-2.5 border-b border-gray-700 flex justify-between items-center">
+      <div className="bg-[#0a0f20] px-3 py-2 border-b border-gray-700 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <AlertTriangle size={18} className="text-yellow-400" />
-          <h2 className="font-semibold text-white">WEATHER PREDICTION</h2>
+          <AlertTriangle size={17} className="text-yellow-400" />
+          <h2 className="font-semibold text-sm text-white">
+            WEATHER PREDICTION
+          </h2>
         </div>
         <button
           onClick={fetchWeatherStats}
           className="text-gray-400 hover:text-white transition"
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={12} />
         </button>
       </div>
 
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        <div className="bg-[#0f1325]/50 rounded-xl p-3">
+      <div className="flex-1 p-3 space-y-2 overflow-y-auto">
+        {/* Today's Weather */}
+        <div className="bg-[#0f1325]/50 rounded-lg p-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <CurrentWeatherIcon size={40} className="text-yellow-400" />
               <div>
-                <p className="text-xs text-gray-400">
+                <p className="text-[10px] text-gray-400">
                   Today,{" "}
                   {new Date().toLocaleDateString("en-US", {
                     month: "short",
@@ -647,20 +639,20 @@ const WeatherSummaryCard = () => {
                 <p className="text-3xl font-bold text-white">
                   {currentWeather.temperature}°F
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-[10px] text-gray-400">
                   {currentWeather.condition}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Droplets size={12} />
+              <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                <Droplets size={17} />
                 <span>{currentWeather.precipitation} mm</span>
                 <span className="text-gray-600">|</span>
                 <span>{currentWeather.humidity}%</span>
               </div>
-              <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-                <Wind size={12} />
+              <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-0.5">
+                <Wind size={17} />
                 <span>{currentWeather.windSpeed} mph</span>
                 <span className="text-gray-600">|</span>
                 <span>{currentWeather.windDirection}</span>
@@ -669,37 +661,39 @@ const WeatherSummaryCard = () => {
           </div>
         </div>
 
+        {/* Hourly Forecast - compact */}
         <div>
-          <p className="text-xs text-gray-500 mb-2">Today's Hourly Forecast</p>
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <p className="text-[10px] text-gray-500 mb-1">Today's Hourly</p>
+          <div className="flex gap-1 overflow-x-auto pb-1">
             {hourlyForecast.length > 0 ? (
-              hourlyForecast.map((hour, idx) => (
+              hourlyForecast.slice(0, 5).map((hour, idx) => (
                 <div
                   key={idx}
-                  className={`text-center min-w-[65px] p-2 rounded-lg ${hour.isBadWeather ? "bg-yellow-500/20" : "bg-[#0f1325]/30"}`}
+                  className={`text-center min-w-[50px] p-1 rounded-md ${hour.isBadWeather ? "bg-yellow-500/20" : "bg-[#0f1325]/30"}`}
                 >
-                  <p className="text-[10px] text-gray-400">{hour.time}</p>
-                  <p className="text-xs font-bold text-white">
+                  <p className="text-[12px] text-gray-400">{hour.time}</p>
+                  <p className="text-[14px] font-bold text-white">
                     {hour.temperature}°
                   </p>
                   {parseFloat(hour.precipitation) > 0 && (
-                    <p className="text-[8px] text-blue-400">
+                    <p className="text-[6px] text-blue-400">
                       {hour.precipitation} mm
                     </p>
                   )}
                 </div>
               ))
             ) : (
-              <div className="text-center py-4 text-gray-500 text-xs w-full">
-                No hourly data available
+              <div className="text-center py-2 text-gray-500 text-[8px] w-full">
+                No hourly data
               </div>
             )}
           </div>
         </div>
 
+        {/* 7-Day Forecast - compact grid */}
         <div>
-          <p className="text-xs text-gray-500 mb-2">7-Day Forecast</p>
-          <div className="grid grid-cols-7 gap-1">
+          <p className="text-[12px] text-gray-500 mb-1">7-Day</p>
+          <div className="grid grid-cols-7 gap-0.5">
             {sevenDayForecast.map((day, idx) => {
               const DayIcon = day.weatherIcon;
               const isBad = day.isBadWeather;
@@ -707,32 +701,23 @@ const WeatherSummaryCard = () => {
               return (
                 <div
                   key={idx}
-                  className={`text-center p-2 rounded-xl transition-all ${day.bgColor} border ${day.borderColor} ${day.isToday ? "ring-1 ring-blue-500/50" : ""}`}
+                  className={`text-center p-1 rounded-md transition-all ${day.bgColor} border ${day.borderColor} ${day.isToday ? "ring-1 ring-blue-500/50" : ""}`}
                 >
-                  <p className="text-xs font-medium text-white">
-                    {day.isToday ? "Today" : day.day}
+                  <p className="text-[12px] font-medium text-white">
+                    {day.isToday ? "T" : day.day.slice(0, 3)}
                   </p>
-                  <p className="text-[9px] text-gray-500">
-                    {day.date} {day.month}
-                  </p>
+                  <p className="text-[11px] text-gray-500">{day.date}</p>
                   <DayIcon
-                    size={20}
-                    className={`mx-auto my-1 ${isBad ? "text-yellow-400" : "text-gray-400"}`}
+                    size={15}
+                    className={`mx-auto my-0.5 ${isBad ? "text-yellow-400" : "text-gray-400"}`}
                   />
-                  <p className="text-xs font-bold text-white">
+                  <p className="text-[14px] font-bold text-white">
                     {day.highTemp}°
                   </p>
-                  <p className="text-[10px] text-gray-400">{day.lowTemp}°</p>
+                  <p className="text-[11px] text-gray-400">{day.lowTemp}°</p>
                   {parseFloat(day.precipitation) > 0 && (
-                    <p className="text-[8px] text-blue-400 mt-1">
-                      {day.precipitation} mm
-                    </p>
-                  )}
-                  {day.severity !== "Low" && !day.isToday && (
-                    <p
-                      className={`text-[8px] font-medium mt-1 ${day.severityColor}`}
-                    >
-                      {day.severity}
+                    <p className="text-[11px] text-blue-400">
+                      {day.precipitation}
                     </p>
                   )}
                 </div>
@@ -741,17 +726,18 @@ const WeatherSummaryCard = () => {
           </div>
         </div>
 
-        <div className="bg-[#0f1325]/50 rounded-lg p-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Eye size={14} className="text-gray-400" />
-            <span className="text-xs text-gray-400">AQI</span>
-            <span className="text-sm font-bold text-white">
+        {/* AQI Section */}
+        <div className="bg-[#0f1325]/50 rounded-md p-1.5 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Eye size={15} className="text-gray-400" />
+            <span className="text-[11px] text-gray-400">AQI</span>
+            <span className="text-[12px] font-bold text-white">
               {currentWeather.aqi}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <div
-              className={`w-2 h-2 rounded-full ${
+              className={`w-1.5 h-1.5 rounded-full ${
                 currentWeather.aqiLevel === "Good"
                   ? "bg-green-500"
                   : currentWeather.aqiLevel === "Moderate"
@@ -759,25 +745,23 @@ const WeatherSummaryCard = () => {
                     : "bg-red-500"
               }`}
             />
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[8px] text-gray-400">
               {currentWeather.aqiLevel}
             </span>
           </div>
         </div>
 
-        <div className="bg-purple-900/20 rounded-lg p-2 text-center">
-          <Calendar size={14} className="inline mr-1 text-purple-400" />
-          <span className="text-xs text-gray-300">
-            Peak impact (next 7 days):{" "}
-          </span>
-          <span className="text-xs text-purple-400 font-bold">
+        {/* Most affected day */}
+        <div className="bg-purple-900/20 rounded-md p-1.5 text-center">
+          <Calendar size={15} className="inline mr-1 text-purple-400" />
+          <span className="text-[12px] text-gray-300">Peak impact: </span>
+          <span className="text-[12px] text-purple-400 font-bold">
             {weatherStats.mostAffectedDay}
           </span>
         </div>
 
-        <div className="text-center text-[10px] text-gray-500 pt-1 border-t border-gray-800">
-          Data from Open-Meteo • Bad weather days highlighted • Today
-          highlighted with blue ring
+        <div className="text-center text-[11px] text-gray-500 pt-1 border-t border-gray-800">
+          Open-Meteo • Bad weather • Today highlighted
         </div>
       </div>
     </div>

@@ -72,11 +72,11 @@ const SitesMap = () => {
     loadData();
   }, []);
 
-  // ================= COLUMN INDICES (updated) =================
+  // ================= COLUMN INDICES =================
   const COL_SITE_ID = 0; // A
   const COL_REGION = 6; // G
-  const COL_STATUS = 34; // AI (was J = 9)
-  const COL_SEVERITY = 24; // Y (new)
+  const COL_STATUS = 34; // AI
+  const COL_SEVERITY = 24; // Y
   const COL_REMAINING_FUEL = 33; // AH
   const COL_LAT_LONG = 40; // AO
 
@@ -134,8 +134,9 @@ const SitesMap = () => {
   const FlyToTarget = () => {
     const map = useMap();
     if (targetSite) {
-      map.flyTo(targetSite.position, 15, { duration: 1.5 });
-      setTimeout(() => setTargetSite(null), 2000);
+      // Slower fly‑to animation (2.5 seconds) and slightly lower zoom level (14)
+      map.flyTo(targetSite.position, 14, { duration: 2.5 });
+      setTimeout(() => setTargetSite(null), 3000);
     }
     return null;
   };

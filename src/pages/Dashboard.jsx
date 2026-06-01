@@ -103,20 +103,16 @@ const Dashboard = () => {
   const loadFuelSummary = async () => {
     setIsLoadingFuel(true);
     try {
-      // Adjust range to A:D if your sheet only has 4 columns (A,B,C,D)
-      // If you have A:E, keep "A:E"
       const rows = await fetchGoogleSheetData("Fuel Summary", "A:D");
-      console.log("Fuel Summary rows:", rows); // DEBUG: check console
+      console.log("Fuel Summary rows:", rows);
 
       if (!rows || rows.length < 2) throw new Error("No fuel summary data");
 
-      // Assuming first row is headers, second row is data
       const dataRow = rows[1];
-      // Columns: A=Target, B=Uplift, C=Dispersion, D=Remaining
       const target = parseFloat(dataRow[0]) || 0;
       const uplift = parseFloat(dataRow[1]) || 0;
-      const sitePouring = parseFloat(dataRow[2]) || 0; // column C (Dispersion)
-      const remaining = parseFloat(dataRow[3]) || 0; // column D (Remaining Fuel)
+      const sitePouring = parseFloat(dataRow[2]) || 0;
+      const remaining = parseFloat(dataRow[3]) || 0;
 
       setFuelSummary({
         fuelTarget: target,
@@ -133,7 +129,6 @@ const Dashboard = () => {
       setPercentageAchieved(target > 0 ? (uplift / target) * 100 : 0);
     } catch (error) {
       console.error("Failed to fetch Fuel Summary data:", error);
-      // Keep zeros
       setFuelSummary({
         fuelTarget: 0,
         totalUplift: 0,
@@ -233,7 +228,7 @@ const Dashboard = () => {
         c6RectifierAlarmCount: c6AlarmCount,
       });
 
-      const toArray = (obj, total) =>
+      const toArray = (obj) =>
         Object.entries(obj)
           .filter(([, fuel]) => fuel > 0)
           .map(([category, fuel]) => ({
@@ -242,8 +237,8 @@ const Dashboard = () => {
           }))
           .sort((a, b) => b.remainingFuel - a.remainingFuel);
 
-      setC1RemainingFuelByCategory(toArray(c1FuelByCategory, c1TotalFuel));
-      setC6RemainingFuelByCategory(toArray(c6FuelByCategory, c6TotalFuel));
+      setC1RemainingFuelByCategory(toArray(c1FuelByCategory));
+      setC6RemainingFuelByCategory(toArray(c6FuelByCategory));
       setC1TotalRemainingFuel(Math.round(c1TotalFuel));
       setC6TotalRemainingFuel(Math.round(c6TotalFuel));
 
@@ -265,7 +260,6 @@ const Dashboard = () => {
       );
     } catch (error) {
       console.error("Failed to fetch Master Sheet data:", error);
-      // All zeros / empty
       setFuelDistribution({
         c1RemainingFuel: 0,
         c6RemainingFuel: 0,
@@ -369,6 +363,7 @@ const Dashboard = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar onMenuClick={toggleSidebar} />
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
+          {/* Responsive grid: radar 3/4, weather 1/4 on large screens */}
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
             <LiveWeatherRadar />
             <div>
