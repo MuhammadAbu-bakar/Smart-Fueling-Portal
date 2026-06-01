@@ -1,0 +1,43 @@
+@import "tailwindcss";
+/* Animation keyframes for flip in/out */
+@keyframes flipIn {
+  0% {
+    transform: rotateX(-90deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes flipOut {
+  0% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(-90deg);
+    opacity: 0;
+  }
+}
+
+.animate-flipIn {
+  animation: flipIn 0.4s ease-out forwards;
+  transform-origin: top;
+}
+
+.animate-flipOut {
+  animation: flipOut 0.3s ease-in forwards;
+  transform-origin: top;
+}
+
+/* Custom scrollbar removal */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
