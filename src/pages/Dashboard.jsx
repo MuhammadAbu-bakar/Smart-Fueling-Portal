@@ -1,14 +1,7 @@
 // src/pages/Dashboard.jsx (Updated section)
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Map,
-  Fuel,
-  Bell,
-  Circle,
-  Zap
-} from "lucide-react";
+import { LayoutDashboard, Map, Fuel, Bell, Circle, Zap } from "lucide-react";
 
 // Import all components
 import WeatherSummaryCard from "../components/WeatherSummaryCard";
@@ -16,7 +9,7 @@ import LiveWeatherRadar from "../components/LiveWeatherRadar";
 import SitesByCategoryTable from "../components/SitesByCategoryTable";
 import FuelSummary from "../components/FuelSummary";
 import FuelDistribution from "../components/FuelDistribution";
-import Sidebar from "../components/Sidebar";
+import SideBar from "../../src/components/SideBar";
 import TopBar from "../components/TopBar";
 import WeatherAlertDashboard from "../components/WeatherAlertDashboard";
 import { fetchGoogleSheetData } from "/backend/GoogleSheetApi";
@@ -38,7 +31,8 @@ const Dashboard = () => {
     date: "24 May 2026",
   };
 
-  const percentageAchieved = (fuelSummary.totalUplift / fuelSummary.fuelTarget) * 100;
+  const percentageAchieved =
+    (fuelSummary.totalUplift / fuelSummary.fuelTarget) * 100;
 
   // ================= DYNAMIC FUEL DISTRIBUTION DATA =================
   const [fuelDistribution, setFuelDistribution] = useState({
@@ -64,29 +58,49 @@ const Dashboard = () => {
   const [totalGreater50, setTotalGreater50] = useState(0);
 
   // ================= REMAINING FUEL BY CATEGORY DATA =================
-  const [c1RemainingFuelByCategory, setC1RemainingFuelByCategory] = useState([]);
-  const [c6RemainingFuelByCategory, setC6RemainingFuelByCategory] = useState([]);
+  const [c1RemainingFuelByCategory, setC1RemainingFuelByCategory] = useState(
+    [],
+  );
+  const [c6RemainingFuelByCategory, setC6RemainingFuelByCategory] = useState(
+    [],
+  );
   const [c1TotalRemainingFuel, setC1TotalRemainingFuel] = useState(0);
   const [c6TotalRemainingFuel, setC6TotalRemainingFuel] = useState(0);
 
   // Helper function to map Severity values to standard categories
   const mapSeverityToCategory = (severity) => {
     if (!severity) return null;
-    
+
     const cleanSeverity = severity.toString().trim().toLowerCase();
-    
+
     if (cleanSeverity.includes("ptn") || cleanSeverity === "ptn node") {
       return "PTN Node";
-    } else if (cleanSeverity.includes("critical") || cleanSeverity.includes("critical hub") || cleanSeverity === "critical hub (10 ++)") {
+    } else if (
+      cleanSeverity.includes("critical") ||
+      cleanSeverity.includes("critical hub") ||
+      cleanSeverity === "critical hub (10 ++)"
+    ) {
       return "Critical Hub (10 ++)";
-    } else if (cleanSeverity.includes("major") || cleanSeverity.includes("major hub") || cleanSeverity === "major hub (5~10)") {
+    } else if (
+      cleanSeverity.includes("major") ||
+      cleanSeverity.includes("major hub") ||
+      cleanSeverity === "major hub (5~10)"
+    ) {
       return "Major Hub (5~10)";
-    } else if (cleanSeverity.includes("minor") || cleanSeverity.includes("minor hub") || cleanSeverity === "minor hub (1~4)") {
+    } else if (
+      cleanSeverity.includes("minor") ||
+      cleanSeverity.includes("minor hub") ||
+      cleanSeverity === "minor hub (1~4)"
+    ) {
       return "Minor Hub (1~4)";
-    } else if (cleanSeverity.includes("single") || cleanSeverity.includes("ftts") || cleanSeverity === "single/ftts") {
+    } else if (
+      cleanSeverity.includes("single") ||
+      cleanSeverity.includes("ftts") ||
+      cleanSeverity === "single/ftts"
+    ) {
       return "Single/FTTS";
     }
-    
+
     return null;
   };
 
@@ -95,21 +109,21 @@ const Dashboard = () => {
     try {
       setIsLoadingMaster(true);
       const rows = await fetchGoogleSheetData("Master Sheet", "A:U");
-      
+
       if (!rows || rows.length === 0) {
-        throw new Error('No data found');
+        throw new Error("No data found");
       }
-      
+
       const dataRows = rows.slice(1);
       setMasterData(dataRows);
-      
+
       let c1TotalFuel = 0;
       let c6TotalFuel = 0;
       let c1AlarmCount = 0;
       let c6AlarmCount = 0;
       let c1SubregionSet = new Set();
       let c6SubregionSet = new Set();
-      
+
       const categoryCounts = {
         "PTN Node": { total: 0, less50: 0, greater50: 0 },
         "Critical Hub (10 ++)": { total: 0, less50: 0, greater50: 0 },
@@ -134,44 +148,45 @@ const Dashboard = () => {
         "Minor Hub (1~4)": 0,
         "Single/FTTS": 0,
       };
-      
+
       dataRows.forEach((row) => {
         const remainingFuel = parseFloat(row[8]) || 0;
-        const region = row[6] ? row[6].toString().trim() : '';
-        const rectifierAlarm = row[10] ? row[10].toString() : '';
-        const severityRaw = row[18] ? row[18].toString() : '';
-        
+        const region = row[6] ? row[6].toString().trim() : "";
+        const rectifierAlarm = row[10] ? row[10].toString() : "";
+        const severityRaw = row[18] ? row[18].toString() : "";
+
         // Update region fuel totals
-        if (region === 'C-1') {
+        if (region === "C-1") {
           c1TotalFuel += remainingFuel;
           if (row[5]) c1SubregionSet.add(row[5].toString());
-        } else if (region === 'C-6') {
+        } else if (region === "C-6") {
           c6TotalFuel += remainingFuel;
           if (row[5]) c6SubregionSet.add(row[5].toString());
         }
-        
+
         // Count rectifier alarms
-        const hasAlarm = rectifierAlarm && 
-                         rectifierAlarm.trim() !== '' && 
-                         rectifierAlarm.toUpperCase() !== 'OK' && 
-                         rectifierAlarm.toUpperCase() !== 'NORMAL' &&
-                         rectifierAlarm.toUpperCase() !== 'NO ALARM' &&
-                         !rectifierAlarm.toLowerCase().includes('no alarm');
-        
+        const hasAlarm =
+          rectifierAlarm &&
+          rectifierAlarm.trim() !== "" &&
+          rectifierAlarm.toUpperCase() !== "OK" &&
+          rectifierAlarm.toUpperCase() !== "NORMAL" &&
+          rectifierAlarm.toUpperCase() !== "NO ALARM" &&
+          !rectifierAlarm.toLowerCase().includes("no alarm");
+
         if (hasAlarm) {
-          if (region === 'C-1') {
+          if (region === "C-1") {
             c1AlarmCount++;
-          } else if (region === 'C-6') {
+          } else if (region === "C-6") {
             c6AlarmCount++;
           }
         }
-        
+
         // Map to category and add remaining fuel
         const category = mapSeverityToCategory(severityRaw);
-        
+
         if (category && categoryCounts[category]) {
           categoryCounts[category].total++;
-          
+
           if (remainingFuel < 50) {
             categoryCounts[category].less50++;
           } else {
@@ -179,23 +194,26 @@ const Dashboard = () => {
           }
 
           // Add remaining fuel to respective region's category
-          if (region === 'C-1' && c1FuelByCategory[category] !== undefined) {
+          if (region === "C-1" && c1FuelByCategory[category] !== undefined) {
             c1FuelByCategory[category] += remainingFuel;
-          } else if (region === 'C-6' && c6FuelByCategory[category] !== undefined) {
+          } else if (
+            region === "C-6" &&
+            c6FuelByCategory[category] !== undefined
+          ) {
             c6FuelByCategory[category] += remainingFuel;
           }
         }
       });
-      
+
       setFuelDistribution({
         c1RemainingFuel: Math.round(c1TotalFuel),
         c6RemainingFuel: Math.round(c6TotalFuel),
-        c1Subregion: Array.from(c1SubregionSet).join(', ') || 'Multiple Areas',
-        c6Subregion: Array.from(c6SubregionSet).join(', ') || 'Multiple Areas',
+        c1Subregion: Array.from(c1SubregionSet).join(", ") || "Multiple Areas",
+        c6Subregion: Array.from(c6SubregionSet).join(", ") || "Multiple Areas",
         c1RectifierAlarmCount: c1AlarmCount,
         c6RectifierAlarmCount: c6AlarmCount,
       });
-      
+
       // Prepare C1 remaining fuel by category array
       const c1FuelArray = [];
       for (const [category, fuel] of Object.entries(c1FuelByCategory)) {
@@ -217,26 +235,31 @@ const Dashboard = () => {
       c6FuelArray.sort((a, b) => b.remainingFuel - a.remainingFuel);
       setC6RemainingFuelByCategory(c6FuelArray);
       setC6TotalRemainingFuel(Math.round(c6TotalFuel));
-      
-      const updatedCategories = dgCategories.map(cat => ({
+
+      const updatedCategories = dgCategories.map((cat) => ({
         ...cat,
         total: categoryCounts[cat.name]?.total || 0,
         less50: categoryCounts[cat.name]?.less50 || 0,
         greater50: categoryCounts[cat.name]?.greater50 || 0,
       }));
-      
+
       setDgCategories(updatedCategories);
-      
+
       const total = updatedCategories.reduce((sum, cat) => sum + cat.total, 0);
-      const less50Total = updatedCategories.reduce((sum, cat) => sum + cat.less50, 0);
-      const greater50Total = updatedCategories.reduce((sum, cat) => sum + cat.greater50, 0);
-      
+      const less50Total = updatedCategories.reduce(
+        (sum, cat) => sum + cat.less50,
+        0,
+      );
+      const greater50Total = updatedCategories.reduce(
+        (sum, cat) => sum + cat.greater50,
+        0,
+      );
+
       setTotalDGs(total);
       setTotalLess50(less50Total);
       setTotalGreater50(greater50Total);
-      
     } catch (error) {
-      console.error('Failed to fetch Master Sheet data:', error);
+      console.error("Failed to fetch Master Sheet data:", error);
       setFuelDistribution({
         c1RemainingFuel: 7242,
         c6RemainingFuel: 5691,
@@ -245,7 +268,7 @@ const Dashboard = () => {
         c1RectifierAlarmCount: 67,
         c6RectifierAlarmCount: 45,
       });
-      
+
       const fallbackCategories = [
         { name: "PTN Node", total: 45, less50: 12, greater50: 33 },
         { name: "Critical Hub (10 ++)", total: 23, less50: 8, greater50: 15 },
@@ -254,10 +277,16 @@ const Dashboard = () => {
         { name: "Single/FTTS", total: 89, less50: 67, greater50: 22 },
       ];
       setDgCategories(fallbackCategories);
-      
+
       const total = fallbackCategories.reduce((sum, cat) => sum + cat.total, 0);
-      const less50Total = fallbackCategories.reduce((sum, cat) => sum + cat.less50, 0);
-      const greater50Total = fallbackCategories.reduce((sum, cat) => sum + cat.greater50, 0);
+      const less50Total = fallbackCategories.reduce(
+        (sum, cat) => sum + cat.less50,
+        0,
+      );
+      const greater50Total = fallbackCategories.reduce(
+        (sum, cat) => sum + cat.greater50,
+        0,
+      );
       setTotalDGs(total);
       setTotalLess50(less50Total);
       setTotalGreater50(greater50Total);
@@ -271,7 +300,7 @@ const Dashboard = () => {
         { category: "Critical Hub (10 ++)", remainingFuel: 674 },
       ]);
       setC1TotalRemainingFuel(7242);
-      
+
       setC6RemainingFuelByCategory([
         { category: "Major Hub (5~10)", remainingFuel: 1712 },
         { category: "Critical Hub (10 ++)", remainingFuel: 1320 },
@@ -296,15 +325,20 @@ const Dashboard = () => {
   const goToRIFDashboard = () => navigate("/rif-dashboard");
 
   const navItems = [
-    { name: "Dashboard", icon: LayoutDashboard, active: true, onClick: goToDashboard },
+    {
+      name: "Dashboard",
+      icon: LayoutDashboard,
+      active: true,
+      onClick: goToDashboard,
+    },
     { name: "Sites Map", icon: Map, active: false, onClick: goToMap },
     { name: "RIF Alarms", icon: Zap, active: false, onClick: goToRIFDashboard },
   ];
 
   const exportCategoriesToCSV = () => {
     let csv = "Category,Total Sites,Fuel <50L,Fuel >50L,Percentage of Total\n";
-    
-    dgCategories.forEach(cat => {
+
+    dgCategories.forEach((cat) => {
       const perc = totalDGs > 0 ? ((cat.total / totalDGs) * 100).toFixed(1) : 0;
       csv += `"${cat.name}",${cat.total},${cat.less50},${cat.greater50},${perc}\n`;
     });
@@ -314,7 +348,7 @@ const Dashboard = () => {
     // Add C1 Remaining Fuel by Category
     csv += "C-1 REMAINING FUEL BY CATEGORY\n";
     csv += "Category,Remaining Fuel (L)\n";
-    c1RemainingFuelByCategory.forEach(item => {
+    c1RemainingFuelByCategory.forEach((item) => {
       csv += `"${item.category}",${item.remainingFuel}\n`;
     });
     csv += `"TOTAL C-1",${c1TotalRemainingFuel}\n\n`;
@@ -322,15 +356,15 @@ const Dashboard = () => {
     // Add C6 Remaining Fuel by Category
     csv += "C-6 REMAINING FUEL BY CATEGORY\n";
     csv += "Category,Remaining Fuel (L)\n";
-    c6RemainingFuelByCategory.forEach(item => {
+    c6RemainingFuelByCategory.forEach((item) => {
       csv += `"${item.category}",${item.remainingFuel}\n`;
     });
     csv += `"TOTAL C-6",${c6TotalRemainingFuel}\n`;
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Sites_By_Category_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `Sites_By_Category_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   };
 
@@ -338,7 +372,7 @@ const Dashboard = () => {
   if (showWeatherPage) {
     return (
       <div className="h-screen bg-[#0f1325] text-white flex overflow-hidden">
-        <Sidebar navItems={navItems} sidebarOpen={sidebarOpen} />
+        <SideBar navItems={navItems} sidebarOpen={sidebarOpen} />
         <main className="flex-1 flex flex-col overflow-hidden">
           <TopBar onMenuClick={toggleSidebar} />
           <div className="flex-1 overflow-y-auto p-5">
@@ -352,11 +386,14 @@ const Dashboard = () => {
   // Main Dashboard View
   return (
     <div className="h-screen bg-[#0f1325] text-white flex overflow-hidden">
-      <Sidebar navItems={navItems} sidebarOpen={sidebarOpen} />
+      <SideBar navItems={navItems} sidebarOpen={sidebarOpen} />
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-20 md:hidden" onClick={toggleSidebar} />
+        <div
+          className="fixed inset-0 bg-black/60 z-20 md:hidden"
+          onClick={toggleSidebar}
+        />
       )}
 
       {/* MAIN CONTENT */}
@@ -373,7 +410,7 @@ const Dashboard = () => {
           </div>
 
           {/* Sites By Category Table */}
-          <SitesByCategoryTable 
+          <SitesByCategoryTable
             dgCategories={dgCategories}
             totalDGs={totalDGs}
             totalLess50={totalLess50}
@@ -383,13 +420,13 @@ const Dashboard = () => {
           />
 
           {/* Fuel Summary */}
-          <FuelSummary 
+          <FuelSummary
             fuelSummary={fuelSummary}
             percentageAchieved={percentageAchieved}
           />
 
           {/* Fuel Distribution with integrated tables */}
-          <FuelDistribution 
+          <FuelDistribution
             fuelDistribution={fuelDistribution}
             isLoadingMaster={isLoadingMaster}
             c1RemainingFuelByCategory={c1RemainingFuelByCategory}
