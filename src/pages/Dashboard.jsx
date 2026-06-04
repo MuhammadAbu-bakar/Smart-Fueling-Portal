@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Map, Zap } from "lucide-react";
+import { LayoutDashboard, Map, Zap, CheckCircle } from "lucide-react";
 
 // Import all components
 import WeatherSummaryCard from "../components/WeatherSummaryCard";
@@ -300,13 +300,20 @@ const Dashboard = () => {
   const goToDashboard = () => setShowWeatherPage(false);
   const goToMap = () => navigate("/map");
   const goToRIFDashboard = () => navigate("/rif-dashboard");
+  const goToDGAutoCheck = () => navigate("/dg-auto-check");
 
   const navItems = [
     {
       name: "Dashboard",
       icon: LayoutDashboard,
-      active: true,
+      active: !showWeatherPage,
       onClick: goToDashboard,
+    },
+    {
+      name: "DG Auto Check",
+      icon: CheckCircle,
+      active: false,
+      onClick: goToDGAutoCheck,
     },
     { name: "Sites Map", icon: Map, active: false, onClick: goToMap },
     { name: "RIF Alarms", icon: Zap, active: false, onClick: goToRIFDashboard },
@@ -363,7 +370,6 @@ const Dashboard = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar onMenuClick={toggleSidebar} />
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
-          {/* Responsive grid: radar 3/4, weather 1/4 on large screens */}
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
             <LiveWeatherRadar />
             <div>
