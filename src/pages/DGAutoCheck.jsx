@@ -302,7 +302,7 @@ const DGAutoCheck = () => {
             </div>
             <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
               <div className="flex justify-between">
-                <p className="text-gray-400">Saving Mode (Yes)</p>
+                <p className="text-gray-400">Saving Nominals</p>
                 <BatteryCharging className="text-green-400" />
               </div>
               <p className="text-3xl font-bold mt-2">
