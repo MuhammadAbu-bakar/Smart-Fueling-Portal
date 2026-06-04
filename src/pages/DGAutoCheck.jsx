@@ -40,13 +40,14 @@ const DGAutoCheck = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [allData, setAllData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
+  const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [subRegionFilter, setSubRegionFilter] = useState("All");
   const [kpis, setKpis] = useState({
     total: 0,
     savingYes: 0,
-    penaltyDashCount: 0,
+    dgManualCount: 0,
     dgAutoNeedsCheck: 0,
   });
 
@@ -96,6 +97,7 @@ const DGAutoCheck = () => {
   useEffect(() => {
     if (!allData.length) return;
 
+    // Apply sub‑region filter
     let filtered = [...allData];
     if (subRegionFilter !== "All") {
       filtered = filtered.filter(
@@ -105,8 +107,9 @@ const DGAutoCheck = () => {
     }
     setFilteredData(filtered);
 
+    // Calculate KPIs on filtered data – with correct conditional logic
     let savingYes = 0;
-    let penaltyDashCount = 0;
+    let dgManualCount = 0;
     let dgAutoNeedsCheck = 0;
 
     filtered.forEach((row) => {
@@ -115,7 +118,7 @@ const DGAutoCheck = () => {
 
       if (saving === "Yes") {
         savingYes++;
-        if (penalty === "-") penaltyDashCount++;
+        if (penalty === "-") dgManualCount++;
         if (penalty.toLowerCase() === "needs to check why on auto") {
           dgAutoNeedsCheck++;
         }
@@ -125,9 +128,17 @@ const DGAutoCheck = () => {
     setKpis({
       total: filtered.length,
       savingYes,
-      penaltyDashCount,
+      dgManualCount,
       dgAutoNeedsCheck,
     });
+
+    // For the table, only keep rows where Penalty = "Needs to check why on Auto"
+    const autoRows = filtered.filter(
+      (row) =>
+        (row[COL.PENALTY]?.toString().trim() || "").toLowerCase() ===
+        "needs to check why on auto",
+    );
+    setTableData(autoRows);
   }, [allData, subRegionFilter]);
 
   useEffect(() => {
@@ -163,7 +174,7 @@ const DGAutoCheck = () => {
   };
 
   const exportToCSV = () => {
-    if (filteredData.length === 0) return;
+    if (tableData.length === 0) return;
 
     const headers = [
       "Site ID",
@@ -179,7 +190,7 @@ const DGAutoCheck = () => {
       "3rd Last Status",
     ];
 
-    const rows = filteredData.map((row) => [
+    const rows = tableData.map((row) => [
       row[COL.SITE_ID] || "",
       row[COL.SUB_REGION] || "",
       row[COL.LAST_CP_FAILURE] || "",
@@ -300,11 +311,11 @@ const DGAutoCheck = () => {
             </div>
             <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
               <div className="flex justify-between">
-                <p className="text-gray-400">Penalty (-)</p>
+                <p className="text-gray-400">DG Manual</p>
                 <MinusCircle className="text-yellow-400" />
               </div>
               <p className="text-3xl font-bold mt-2">
-                {loading ? "..." : kpis.penaltyDashCount}
+                {loading ? "..." : kpis.dgManualCount}
               </p>
             </div>
             <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
@@ -318,21 +329,24 @@ const DGAutoCheck = () => {
             </div>
           </div>
 
-          {/* Data Table */}
+          {/* Data Table – only shows rows with Penalty = "Needs to check why on Auto" */}
           <div className="bg-[#13182b] rounded-xl border border-gray-800 overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-800 flex justify-between items-center">
               <div>
-                <h2 className="font-semibold">DG Auto Check Details</h2>
+                <h2 className="font-semibold">Sites Needing DG Auto Check</h2>
                 {subRegionFilter !== "All" && (
                   <p className="text-xs text-gray-500 mt-1">
                     Showing sites in{" "}
                     <span className="text-blue-400">{subRegionFilter}</span>
                   </p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  (Only sites where Penalty = "Needs to check why on Auto")
+                </p>
               </div>
               <button
                 onClick={exportToCSV}
-                disabled={filteredData.length === 0}
+                disabled={tableData.length === 0}
                 className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg text-sm transition-colors"
               >
                 <Download size={16} />
@@ -363,17 +377,17 @@ const DGAutoCheck = () => {
                         Loading...
                       </td>
                     </tr>
-                  ) : filteredData.length === 0 ? (
+                  ) : tableData.length === 0 ? (
                     <tr>
                       <td
                         colSpan={11}
                         className="text-center p-8 text-gray-400"
                       >
-                        No data for the selected filter
+                        No sites with "Needs to check why on Auto"
                       </td>
                     </tr>
                   ) : (
-                    filteredData.map((row, idx) => (
+                    tableData.map((row, idx) => (
                       <tr
                         key={idx}
                         className="border-b border-gray-800/50 hover:bg-[#1a213a]"

@@ -9,6 +9,7 @@ import LiveWeatherRadar from "../components/LiveWeatherRadar";
 import SitesByCategoryTable from "../components/SitesByCategoryTable";
 import FuelSummary from "../components/FuelSummary";
 import FuelDistribution from "../components/FuelDistribution";
+import FuelDispersion from "../components/FuelDispersion";
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 import WeatherAlertDashboard from "../components/WeatherAlertDashboard";
@@ -21,17 +22,20 @@ const Dashboard = () => {
   const [masterData, setMasterData] = useState([]);
   const [isLoadingMaster, setIsLoadingMaster] = useState(true);
   const [isLoadingFuel, setIsLoadingFuel] = useState(true);
+  const [isLoadingDispersion, setIsLoadingDispersion] = useState(true);
 
-  // ================= FUEL SUMMARY DATA (from sheet) =================
-  const [fuelSummary, setFuelSummary] = useState({
-    fuelTarget: 0,
-    totalUplift: 0,
-    accessSiteFuelPouring: 0,
-    teamInHand: 0,
-    availableL: 0,
-    date: "",
+  // ================= FUEL SUMMARY DATA (from "Fuel Summary" sheet) =================
+  const [fuelRows, setFuelRows] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedFuelData, setSelectedFuelData] = useState({
+    target: 0,
+    dispersion: 0,
+    carryForward: 0,
   });
-  const [percentageAchieved, setPercentageAchieved] = useState(0);
+  const [availableMonths, setAvailableMonths] = useState([]);
+
+  // ================= FUEL DISPERSION COMPARISON (from "Fuel Dispersion" sheet) =================
+  const [dispersionData, setDispersionData] = useState([]);
 
   // ================= DYNAMIC FUEL DISTRIBUTION DATA =================
   const [fuelDistribution, setFuelDistribution] = useState({
@@ -99,53 +103,65 @@ const Dashboard = () => {
     return null;
   };
 
-  // Fetch Fuel Summary data from "Fuel Summary" sheet
+  // Fetch Fuel Summary data (columns A:D)
   const loadFuelSummary = async () => {
     setIsLoadingFuel(true);
     try {
       const rows = await fetchGoogleSheetData("Fuel Summary", "A:D");
-      console.log("Fuel Summary rows:", rows);
-
       if (!rows || rows.length < 2) throw new Error("No fuel summary data");
-
-      const dataRow = rows[1];
-      const target = parseFloat(dataRow[0]) || 0;
-      const uplift = parseFloat(dataRow[1]) || 0;
-      const sitePouring = parseFloat(dataRow[2]) || 0;
-      const remaining = parseFloat(dataRow[3]) || 0;
-
-      setFuelSummary({
-        fuelTarget: target,
-        totalUplift: uplift,
-        accessSiteFuelPouring: sitePouring,
-        teamInHand: 0,
-        availableL: remaining,
-        date: new Date().toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-      });
-      setPercentageAchieved(target > 0 ? (uplift / target) * 100 : 0);
+      const dataRows = rows.slice(1);
+      setFuelRows(dataRows);
+      const months = dataRows
+        .map((row) => row[0]?.toString().trim())
+        .filter((m) => m);
+      setAvailableMonths(months);
+      if (months.length > 0) setSelectedMonth(months[0]);
     } catch (error) {
       console.error("Failed to fetch Fuel Summary data:", error);
-      setFuelSummary({
-        fuelTarget: 0,
-        totalUplift: 0,
-        accessSiteFuelPouring: 0,
-        teamInHand: 0,
-        availableL: 0,
-        date: new Date().toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-      });
-      setPercentageAchieved(0);
+      setFuelRows([]);
+      setAvailableMonths([]);
     } finally {
       setIsLoadingFuel(false);
     }
   };
+
+  // Fetch Fuel Dispersion data (columns A:C)
+  const loadFuelDispersion = async () => {
+    setIsLoadingDispersion(true);
+    try {
+      const rows = await fetchGoogleSheetData("Fuel Dispersion", "A:C");
+      if (!rows || rows.length < 2) throw new Error("No dispersion data");
+      const dataRows = rows.slice(1);
+      const parsed = dataRows
+        .filter((row) => row[0] && row[0].toString().trim() !== "")
+        .map((row) => ({
+          month: row[0].toString().trim(),
+          y25: parseFloat(row[1]) || 0,
+          y26: parseFloat(row[2]) || 0,
+        }));
+      setDispersionData(parsed);
+    } catch (error) {
+      console.error("Failed to fetch Fuel Dispersion data:", error);
+      setDispersionData([]);
+    } finally {
+      setIsLoadingDispersion(false);
+    }
+  };
+
+  // Update selected fuel data when month changes
+  useEffect(() => {
+    if (!selectedMonth || fuelRows.length === 0) return;
+    const row = fuelRows.find((r) => r[0]?.toString().trim() === selectedMonth);
+    if (row) {
+      setSelectedFuelData({
+        target: parseFloat(row[1]) || 0,
+        dispersion: parseFloat(row[2]) || 0,
+        carryForward: parseFloat(row[3]) || 0,
+      });
+    } else {
+      setSelectedFuelData({ target: 0, dispersion: 0, carryForward: 0 });
+    }
+  }, [selectedMonth, fuelRows]);
 
   // Fetch Master Sheet data and calculate all metrics
   const loadMasterData = async () => {
@@ -157,12 +173,12 @@ const Dashboard = () => {
       const dataRows = rows.slice(1);
       setMasterData(dataRows);
 
-      let c1TotalFuel = 0;
-      let c6TotalFuel = 0;
-      let c1AlarmCount = 0;
-      let c6AlarmCount = 0;
-      let c1SubregionSet = new Set();
-      let c6SubregionSet = new Set();
+      let c1TotalFuel = 0,
+        c6TotalFuel = 0,
+        c1AlarmCount = 0,
+        c6AlarmCount = 0;
+      let c1SubregionSet = new Set(),
+        c6SubregionSet = new Set();
 
       const categoryCounts = {
         "PTN Node": { total: 0, less50: 0, greater50: 0 },
@@ -260,6 +276,7 @@ const Dashboard = () => {
       );
     } catch (error) {
       console.error("Failed to fetch Master Sheet data:", error);
+      // Set defaults on error
       setFuelDistribution({
         c1RemainingFuel: 0,
         c6RemainingFuel: 0,
@@ -287,9 +304,11 @@ const Dashboard = () => {
     }
   };
 
+  // Fetch all data on mount
   useEffect(() => {
     const fetchAll = async () => {
       await loadFuelSummary();
+      await loadFuelDispersion();
       await loadMasterData();
     };
     fetchAll();
@@ -316,7 +335,12 @@ const Dashboard = () => {
       onClick: goToDGAutoCheck,
     },
     { name: "Sites Map", icon: Map, active: false, onClick: goToMap },
-    { name: "RIF Alarms", icon: Zap, active: false, onClick: goToRIFDashboard },
+    {
+      name: "RIF Alarms",
+      icon: Zap,
+      active: false,
+      onClick: goToRIFDashboard,
+    },
   ];
 
   const exportCategoriesToCSV = () => {
@@ -340,10 +364,13 @@ const Dashboard = () => {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Sites_By_Category_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `Sites_By_Category_${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
     link.click();
   };
 
+  // Weather page view
   if (showWeatherPage) {
     return (
       <div className="h-screen bg-[#0f1325] text-white flex overflow-hidden">
@@ -358,6 +385,7 @@ const Dashboard = () => {
     );
   }
 
+  // Main Dashboard view
   return (
     <div className="h-screen bg-[#0f1325] text-white flex overflow-hidden">
       <SideBar navItems={navItems} sidebarOpen={sidebarOpen} />
@@ -370,12 +398,15 @@ const Dashboard = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar onMenuClick={toggleSidebar} />
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
+          {/* Weather radar and summary */}
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
             <LiveWeatherRadar />
             <div>
               <WeatherSummaryCard />
             </div>
           </div>
+
+          {/* Sites by Category Table */}
           <SitesByCategoryTable
             dgCategories={dgCategories}
             totalDGs={totalDGs}
@@ -384,11 +415,23 @@ const Dashboard = () => {
             isLoadingMaster={isLoadingMaster}
             onExport={exportCategoriesToCSV}
           />
+
+          {/* Fuel Dispersion Comparison (NEW) */}
+          <FuelDispersion
+            data={dispersionData}
+            isLoading={isLoadingDispersion}
+          />
+
+          {/* Fuel Summary (with month filter) */}
           <FuelSummary
-            fuelSummary={fuelSummary}
-            percentageAchieved={percentageAchieved}
+            selectedMonth={selectedMonth}
+            availableMonths={availableMonths}
+            onMonthChange={setSelectedMonth}
+            fuelData={selectedFuelData}
             isLoading={isLoadingFuel}
           />
+
+          {/* Fuel Distribution (C-1 and C-6) */}
           <FuelDistribution
             fuelDistribution={fuelDistribution}
             isLoadingMaster={isLoadingMaster}
