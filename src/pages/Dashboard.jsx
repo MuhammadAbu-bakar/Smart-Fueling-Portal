@@ -1,15 +1,13 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Map, Zap, CheckCircle } from "lucide-react";
+import { LayoutDashboard, Map, Zap, CheckCircle, Fuel } from "lucide-react";
 
 // Import all components
 import WeatherSummaryCard from "../components/WeatherSummaryCard";
 import LiveWeatherRadar from "../components/LiveWeatherRadar";
 import SitesByCategoryTable from "../components/SitesByCategoryTable";
-import FuelSummary from "../components/FuelSummary";
 import FuelDistribution from "../components/FuelDistribution";
-import FuelDispersion from "../components/FuelDispersion";
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
 import WeatherAlertDashboard from "../components/WeatherAlertDashboard";
@@ -21,23 +19,8 @@ const Dashboard = () => {
   const [showWeatherPage, setShowWeatherPage] = useState(false);
   const [masterData, setMasterData] = useState([]);
   const [isLoadingMaster, setIsLoadingMaster] = useState(true);
-  const [isLoadingFuel, setIsLoadingFuel] = useState(true);
-  const [isLoadingDispersion, setIsLoadingDispersion] = useState(true);
 
-  // ================= FUEL SUMMARY DATA (from "Fuel Summary" sheet) =================
-  const [fuelRows, setFuelRows] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [selectedFuelData, setSelectedFuelData] = useState({
-    target: 0,
-    dispersion: 0,
-    carryForward: 0,
-  });
-  const [availableMonths, setAvailableMonths] = useState([]);
-
-  // ================= FUEL DISPERSION COMPARISON (from "Fuel Dispersion" sheet) =================
-  const [dispersionData, setDispersionData] = useState([]);
-
-  // ================= DYNAMIC FUEL DISTRIBUTION DATA =================
+  // ================= FUEL DISTRIBUTION DATA (kept on Dashboard) =================
   const [fuelDistribution, setFuelDistribution] = useState({
     c1RemainingFuel: 0,
     c6RemainingFuel: 0,
@@ -47,7 +30,6 @@ const Dashboard = () => {
     c6RectifierAlarmCount: 0,
   });
 
-  // ================= DYNAMIC DG CATEGORIES DATA =================
   const [dgCategories, setDgCategories] = useState([
     { name: "PTN Node", total: 0, less50: 0, greater50: 0 },
     { name: "Critical Hub (10 ++)", total: 0, less50: 0, greater50: 0 },
@@ -60,7 +42,6 @@ const Dashboard = () => {
   const [totalLess50, setTotalLess50] = useState(0);
   const [totalGreater50, setTotalGreater50] = useState(0);
 
-  // ================= REMAINING FUEL BY CATEGORY DATA =================
   const [c1RemainingFuelByCategory, setC1RemainingFuelByCategory] = useState(
     [],
   );
@@ -103,67 +84,7 @@ const Dashboard = () => {
     return null;
   };
 
-  // Fetch Fuel Summary data (columns A:D)
-  const loadFuelSummary = async () => {
-    setIsLoadingFuel(true);
-    try {
-      const rows = await fetchGoogleSheetData("Fuel Summary", "A:D");
-      if (!rows || rows.length < 2) throw new Error("No fuel summary data");
-      const dataRows = rows.slice(1);
-      setFuelRows(dataRows);
-      const months = dataRows
-        .map((row) => row[0]?.toString().trim())
-        .filter((m) => m);
-      setAvailableMonths(months);
-      if (months.length > 0) setSelectedMonth(months[0]);
-    } catch (error) {
-      console.error("Failed to fetch Fuel Summary data:", error);
-      setFuelRows([]);
-      setAvailableMonths([]);
-    } finally {
-      setIsLoadingFuel(false);
-    }
-  };
-
-  // Fetch Fuel Dispersion data (columns A:C)
-  const loadFuelDispersion = async () => {
-    setIsLoadingDispersion(true);
-    try {
-      const rows = await fetchGoogleSheetData("Fuel Dispersion", "A:C");
-      if (!rows || rows.length < 2) throw new Error("No dispersion data");
-      const dataRows = rows.slice(1);
-      const parsed = dataRows
-        .filter((row) => row[0] && row[0].toString().trim() !== "")
-        .map((row) => ({
-          month: row[0].toString().trim(),
-          y25: parseFloat(row[1]) || 0,
-          y26: parseFloat(row[2]) || 0,
-        }));
-      setDispersionData(parsed);
-    } catch (error) {
-      console.error("Failed to fetch Fuel Dispersion data:", error);
-      setDispersionData([]);
-    } finally {
-      setIsLoadingDispersion(false);
-    }
-  };
-
-  // Update selected fuel data when month changes
-  useEffect(() => {
-    if (!selectedMonth || fuelRows.length === 0) return;
-    const row = fuelRows.find((r) => r[0]?.toString().trim() === selectedMonth);
-    if (row) {
-      setSelectedFuelData({
-        target: parseFloat(row[1]) || 0,
-        dispersion: parseFloat(row[2]) || 0,
-        carryForward: parseFloat(row[3]) || 0,
-      });
-    } else {
-      setSelectedFuelData({ target: 0, dispersion: 0, carryForward: 0 });
-    }
-  }, [selectedMonth, fuelRows]);
-
-  // Fetch Master Sheet data and calculate all metrics
+  // Fetch Master Sheet data and calculate all metrics (for FuelDistribution & DG categories)
   const loadMasterData = async () => {
     setIsLoadingMaster(true);
     try {
@@ -306,12 +227,7 @@ const Dashboard = () => {
 
   // Fetch all data on mount
   useEffect(() => {
-    const fetchAll = async () => {
-      await loadFuelSummary();
-      await loadFuelDispersion();
-      await loadMasterData();
-    };
-    fetchAll();
+    loadMasterData();
   }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -320,6 +236,7 @@ const Dashboard = () => {
   const goToMap = () => navigate("/map");
   const goToRIFDashboard = () => navigate("/rif-dashboard");
   const goToDGAutoCheck = () => navigate("/dg-auto-check");
+  const goToFuelManagement = () => navigate("/fuel-summary");
 
   const navItems = [
     {
@@ -327,6 +244,12 @@ const Dashboard = () => {
       icon: LayoutDashboard,
       active: !showWeatherPage,
       onClick: goToDashboard,
+    },
+    {
+      name: "Fuel Performance",
+      icon: Fuel,
+      active: false,
+      onClick: goToFuelManagement,
     },
     {
       name: "DG Auto Check",
@@ -416,22 +339,7 @@ const Dashboard = () => {
             onExport={exportCategoriesToCSV}
           />
 
-          {/* Fuel Dispersion Comparison (NEW) */}
-          <FuelDispersion
-            data={dispersionData}
-            isLoading={isLoadingDispersion}
-          />
-
-          {/* Fuel Summary (with month filter) */}
-          <FuelSummary
-            selectedMonth={selectedMonth}
-            availableMonths={availableMonths}
-            onMonthChange={setSelectedMonth}
-            fuelData={selectedFuelData}
-            isLoading={isLoadingFuel}
-          />
-
-          {/* Fuel Distribution (C-1 and C-6) */}
+          {/* Fuel Distribution (C-1 and C-6) - kept on Dashboard */}
           <FuelDistribution
             fuelDistribution={fuelDistribution}
             isLoadingMaster={isLoadingMaster}

@@ -460,7 +460,7 @@ const RIFDashboard = () => {
       alarm.precipProbability || "N/A",
       alarm.windSpeed || "N/A",
       alarm.temperature || "N/A",
-      alarm.siteCategory, // already normalized
+      alarm.siteCategory,
     ]);
 
     const csvContent = [
@@ -525,7 +525,7 @@ const RIFDashboard = () => {
           const duration = row[COL_DURATION] || "N/A";
           const remainingFuel = parseFloat(row[COL_REMAINING_FUEL]) || 0;
           const rawSeverity = row[COL_SEVERITY] || "Unknown";
-          const normalizedCategory = mapSeverityToCategory(rawSeverity); // APPLY MAPPING
+          const normalizedCategory = mapSeverityToCategory(rawSeverity);
           const siteName = row[COL_SITE_NAME] || "Unknown Site";
           const siteId = row[COL_SITE_ID] || "N/A";
           const occurTime = row[COL_OCCUR_TIME] || "N/A";
@@ -540,8 +540,8 @@ const RIFDashboard = () => {
             coordinates: coordinates,
             alarmMessage: rectifierAlarm,
             remainingFuel: remainingFuel,
-            siteCategory: normalizedCategory, // normalized
-            rawSeverity: rawSeverity, // keep for debugging
+            siteCategory: normalizedCategory,
+            rawSeverity: rawSeverity,
           });
 
           regionCount[region] = (regionCount[region] || 0) + 1;
@@ -838,6 +838,8 @@ const RIFDashboard = () => {
   const goToDashboard = () => navigate("/");
   const goToWeatherPage = () => navigate("/weather");
   const goToMap = () => navigate("/map");
+  const goToFuelManagement = () => navigate("/fuel-summary");
+  const goToDGAutoCheck = () => navigate("/dg-auto-check");
 
   const navItems = [
     {
@@ -846,8 +848,30 @@ const RIFDashboard = () => {
       active: false,
       onClick: goToDashboard,
     },
-    { name: "Sites Map", icon: Map, active: false, onClick: goToMap },
-    { name: "RIF Alarms", icon: Zap, active: true, onClick: null },
+    {
+      name: "Fuel Performance",
+      icon: Fuel,
+      active: false,
+      onClick: goToFuelManagement,
+    },
+    {
+      name: "DG Auto Check",
+      icon: CheckCircle,
+      active: false,
+      onClick: goToDGAutoCheck,
+    },
+    {
+      name: "Sites Map",
+      icon: Map,
+      active: false,
+      onClick: goToMap,
+    },
+    {
+      name: "RIF Alarms",
+      icon: Zap,
+      active: true,
+      onClick: null,
+    },
   ];
 
   // Get category color (same as SitesByCategoryTable)

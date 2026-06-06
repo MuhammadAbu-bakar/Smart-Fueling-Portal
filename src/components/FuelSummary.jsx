@@ -9,6 +9,9 @@ const FuelSummary = ({
   fuelData,
   isLoading,
 }) => {
+  // Check if selected month is June (case‑insensitive, handles "Jun", "June", "JUN", etc.)
+  const isJune = selectedMonth && selectedMonth.toLowerCase().includes("jun");
+
   return (
     <div className="bg-gradient-to-br from-[#1a2142] to-[#13182b] rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
       <div className="px-5 pt-4 pb-2 flex justify-between items-center flex-wrap gap-3">
@@ -79,23 +82,25 @@ const FuelSummary = ({
               <p className="text-[11px] text-gray-500 mt-1">Fuel Issued</p>
             </div>
 
-            {/* Carry Forward Card */}
+            {/* Third Card – changes label for June */}
             <div className="bg-[#0f1325]/70 rounded-xl p-4 text-center border border-gray-700/50 hover:border-red-500/50 transition-colors">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <AlertTriangle size={18} className="text-red-400" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide font-medium">
-                  CARRY FORWARD
+                  {isJune ? "REMAINING FUEL" : "CARRY FORWARD"}
                 </p>
               </div>
               <p className="text-2xl font-bold text-red-400">
                 {fuelData.carryForward.toLocaleString()}{" "}
                 <span className="text-xs font-normal text-gray-400">L</span>
               </p>
-              <p className="text-[11px] text-gray-500 mt-1">Remaining Stock</p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {isJune ? "Current Stock" : "Remaining Stock"}
+              </p>
             </div>
           </div>
 
-          {/* Simple progress / summary bar (optional) */}
+          {/* Progress bar */}
           <div className="px-5 pb-5">
             <div className="flex justify-between text-xs text-gray-400 mb-1">
               <span>Target vs Dispersion</span>
@@ -121,7 +126,8 @@ const FuelSummary = ({
             <div className="flex justify-between text-[10px] text-gray-500 mt-2">
               <span>0%</span>
               <span>
-                Carry Forward: {fuelData.carryForward.toLocaleString()} L
+                {isJune ? "Remaining Fuel" : "Carry Forward"}:{" "}
+                {fuelData.carryForward.toLocaleString()} L
               </span>
               <span>100%</span>
             </div>

@@ -13,6 +13,7 @@ import {
   MinusCircle,
   Filter,
   Download,
+  Fuel, // <-- added for Fuel Management
 } from "lucide-react";
 import { fetchGoogleSheetData } from "/backend/GoogleSheetApi";
 import SideBar from "../components/SideBar";
@@ -61,11 +62,18 @@ const DGAutoCheck = () => {
       onClick: () => navigate("/"),
     },
     {
+      name: "Fuel Performance", // <-- added
+      icon: Fuel,
+      active: false,
+      onClick: () => navigate("/fuel-summary"),
+    },
+    {
       name: "DG Auto Check",
       icon: CheckCircle,
       active: true,
       onClick: () => {},
     },
+
     {
       name: "Sites Map",
       icon: Map,

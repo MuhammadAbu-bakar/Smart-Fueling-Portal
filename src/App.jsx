@@ -10,6 +10,7 @@ import WeatherRadar from "./pages/WeatherRadar";
 import RIFDashboard from "./pages/RIFDashboard";
 import WeatherAlertDashboard from "./components/WeatherAlertDashboard";
 import DGAutoCheck from "./pages/DGAutoCheck";
+import FuelManagementPage from "./pages/FuelManagementPage";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/rif-dashboard" element={<RIFDashboard />} />
         <Route path="/weather-impact" element={<WeatherAlertDashboard />} />
         <Route path="/dg-auto-check" element={<DGAutoCheck />} />
+        <Route path="/fuel-summary" element={<FuelManagementPage />} />
 
         {/* Default Route */}
         <Route path="*" element={<Navigate to="/dashboard" />} />
