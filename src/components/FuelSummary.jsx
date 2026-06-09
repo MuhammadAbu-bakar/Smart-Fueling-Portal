@@ -1,4 +1,3 @@
-// src/components/FuelSummary.jsx
 import React from "react";
 import { Package, Fuel, TrendingUp, AlertTriangle, Filter } from "lucide-react";
 
