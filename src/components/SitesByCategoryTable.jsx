@@ -8,7 +8,7 @@ const SitesByCategoryTable = ({
   totalLess50,
   totalGreater50,
   isLoadingMaster,
-  onExport,
+  onExport, // now triggers export of site‑wise details
 }) => {
   return (
     <div className="bg-gradient-to-br from-[#1a2142] to-[#13182b] rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
@@ -28,7 +28,7 @@ const SitesByCategoryTable = ({
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-all active:scale-95"
           >
             <Download size={16} />
-            Export CSV
+            Export Site‑wise (Fuel &lt;50L)
           </button>
         </div>
       </div>

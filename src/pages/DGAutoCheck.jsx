@@ -13,7 +13,7 @@ import {
   MinusCircle,
   Filter,
   Download,
-  Fuel, // <-- added for Fuel Management
+  Fuel,
 } from "lucide-react";
 import { fetchGoogleSheetData } from "/backend/GoogleSheetApi";
 import SideBar from "../components/SideBar";
@@ -62,7 +62,7 @@ const DGAutoCheck = () => {
       onClick: () => navigate("/"),
     },
     {
-      name: "Fuel Performance", // <-- added
+      name: "Fuel Performance",
       icon: Fuel,
       active: false,
       onClick: () => navigate("/fuel-summary"),
@@ -73,7 +73,6 @@ const DGAutoCheck = () => {
       active: true,
       onClick: () => {},
     },
-
     {
       name: "Sites Map",
       icon: Map,
@@ -105,7 +104,6 @@ const DGAutoCheck = () => {
   useEffect(() => {
     if (!allData.length) return;
 
-    // Apply sub‑region filter
     let filtered = [...allData];
     if (subRegionFilter !== "All") {
       filtered = filtered.filter(
@@ -115,7 +113,6 @@ const DGAutoCheck = () => {
     }
     setFilteredData(filtered);
 
-    // Calculate KPIs on filtered data – with correct conditional logic
     let savingYes = 0;
     let dgManualCount = 0;
     let dgAutoNeedsCheck = 0;
@@ -140,7 +137,6 @@ const DGAutoCheck = () => {
       dgAutoNeedsCheck,
     });
 
-    // For the table, only keep rows where Penalty = "Needs to check why on Auto"
     const autoRows = filtered.filter(
       (row) =>
         (row[COL.PENALTY]?.toString().trim() || "").toLowerCase() ===
@@ -261,16 +257,18 @@ const DGAutoCheck = () => {
       )}
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar onMenuClick={toggleSidebar} />
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Header with Filter */}
-          <div className="flex justify-between items-center flex-wrap gap-3">
+        <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 md:space-y-5">
+          {/* Header with Filter - Responsive row/column */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h1 className="text-2xl font-bold">DG Auto Check Dashboard</h1>
-              <p className="text-gray-400 text-sm">
+              <h1 className="text-xl md:text-2xl font-bold">
+                DG Auto Check Dashboard
+              </h1>
+              <p className="text-gray-400 text-xs md:text-sm">
                 Monitoring DG Auto Mode and Saving Status
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
                 <Filter size={16} className="text-gray-600" />
                 <select
@@ -297,51 +295,53 @@ const DGAutoCheck = () => {
             </div>
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
+          {/* KPI Cards - fully responsive grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="bg-[#13182b] rounded-xl p-4 md:p-5 border border-gray-800">
               <div className="flex justify-between">
-                <p className="text-gray-400">Total Sites</p>
-                <Database className="text-blue-400" />
+                <p className="text-gray-400 text-sm">Total Sites</p>
+                <Database className="text-blue-400" size={20} />
               </div>
-              <p className="text-3xl font-bold mt-2">
+              <p className="text-2xl md:text-3xl font-bold mt-2">
                 {loading ? "..." : kpis.total}
               </p>
             </div>
-            <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
+            <div className="bg-[#13182b] rounded-xl p-4 md:p-5 border border-gray-800">
               <div className="flex justify-between">
-                <p className="text-gray-400">Saving Nominals</p>
-                <BatteryCharging className="text-green-400" />
+                <p className="text-gray-400 text-sm">Saving Nominals</p>
+                <BatteryCharging className="text-green-400" size={20} />
               </div>
-              <p className="text-3xl font-bold mt-2">
+              <p className="text-2xl md:text-3xl font-bold mt-2">
                 {loading ? "..." : kpis.savingYes}
               </p>
             </div>
-            <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
+            <div className="bg-[#13182b] rounded-xl p-4 md:p-5 border border-gray-800">
               <div className="flex justify-between">
-                <p className="text-gray-400">DG Manual</p>
-                <MinusCircle className="text-yellow-400" />
+                <p className="text-gray-400 text-sm">DG Manual</p>
+                <MinusCircle className="text-yellow-400" size={20} />
               </div>
-              <p className="text-3xl font-bold mt-2">
+              <p className="text-2xl md:text-3xl font-bold mt-2">
                 {loading ? "..." : kpis.dgManualCount}
               </p>
             </div>
-            <div className="bg-[#13182b] rounded-xl p-5 border border-gray-800">
+            <div className="bg-[#13182b] rounded-xl p-4 md:p-5 border border-gray-800">
               <div className="flex justify-between">
-                <p className="text-gray-400">DG Auto (Needs Check)</p>
-                <AlertTriangle className="text-red-400" />
+                <p className="text-gray-400 text-sm">DG Auto (Needs Check)</p>
+                <AlertTriangle className="text-red-400" size={20} />
               </div>
-              <p className="text-3xl font-bold mt-2">
+              <p className="text-2xl md:text-3xl font-bold mt-2">
                 {loading ? "..." : kpis.dgAutoNeedsCheck}
               </p>
             </div>
           </div>
 
-          {/* Data Table – only shows rows with Penalty = "Needs to check why on Auto" */}
+          {/* Data Table – only rows with Penalty = "Needs to check why on Auto" */}
           <div className="bg-[#13182b] rounded-xl border border-gray-800 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-800 flex justify-between items-center">
+            <div className="px-4 md:px-5 py-3 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <div>
-                <h2 className="font-semibold">Sites Needing DG Auto Check</h2>
+                <h2 className="font-semibold text-base md:text-lg">
+                  Sites Needing DG Auto Check
+                </h2>
                 {subRegionFilter !== "All" && (
                   <p className="text-xs text-gray-500 mt-1">
                     Showing sites in{" "}
@@ -362,20 +362,20 @@ const DGAutoCheck = () => {
               </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs md:text-sm">
                 <thead className="bg-[#0f1325]">
                   <tr className="border-b border-gray-800">
-                    <th className="p-3 text-left">Site ID</th>
-                    <th>Sub-Region</th>
-                    <th>Last CP Failure</th>
-                    <th>Last DG Running</th>
-                    <th>Last Status</th>
-                    <th>2nd Last CP Failure</th>
-                    <th>2nd Last DG Running</th>
-                    <th>2nd Last Status</th>
-                    <th>3rd Last CP Failure</th>
-                    <th>3rd Last DG Running</th>
-                    <th>3rd Last Status</th>
+                    <th className="p-2 md:p-3 text-left">Site ID</th>
+                    <th className="p-2 md:p-3">Sub-Region</th>
+                    <th className="p-2 md:p-3">Last CP Failure</th>
+                    <th className="p-2 md:p-3">Last DG Running</th>
+                    <th className="p-2 md:p-3">Last Status</th>
+                    <th className="p-2 md:p-3">2nd Last CP Failure</th>
+                    <th className="p-2 md:p-3">2nd Last DG Running</th>
+                    <th className="p-2 md:p-3">2nd Last Status</th>
+                    <th className="p-2 md:p-3">3rd Last CP Failure</th>
+                    <th className="p-2 md:p-3">3rd Last DG Running</th>
+                    <th className="p-2 md:p-3">3rd Last Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -400,10 +400,10 @@ const DGAutoCheck = () => {
                         key={idx}
                         className="border-b border-gray-800/50 hover:bg-[#1a213a]"
                       >
-                        <td className="p-3 font-mono">
+                        <td className="p-2 md:p-3 font-mono">
                           {row[COL.SITE_ID] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           <span
                             className={`px-2 py-1 rounded-full text-xs ${
                               row[COL.SUB_REGION] === "C-1"
@@ -414,31 +414,31 @@ const DGAutoCheck = () => {
                             {row[COL.SUB_REGION] || "-"}
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {row[COL.LAST_CP_FAILURE] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {row[COL.LAST_DG_RUNNING] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {getStatusBadge(row[COL.LAST_STATUS])}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {row[COL.SECOND_LAST_CP_FAILURE] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {row[COL.SECOND_LAST_DG_RUNNING] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {getStatusBadge(row[COL.SECOND_LAST_STATUS])}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {row[COL.THIRD_LAST_CP_FAILURE] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {row[COL.THIRD_LAST_DG_RUNNING] || "-"}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 md:p-3">
                           {getStatusBadge(row[COL.THIRD_LAST_STATUS])}
                         </td>
                       </tr>

@@ -13,6 +13,7 @@ import {
   Target,
   Droplet,
   AlertCircle,
+  Gauge,
 } from "lucide-react";
 import SideBar from "../components/SideBar";
 import TopBar from "../components/TopBar";
@@ -70,15 +71,19 @@ const FuelManagementPage = () => {
   const [dispersionData, setDispersionData] = useState([]);
   const [isLoadingDispersion, setIsLoadingDispersion] = useState(true);
 
-  // Fuel Savings state
-  const [fuelSavings, setFuelSavings] = useState(null);
-
-  // YTD Summary state
-  const [ytdSummary, setYtdSummary] = useState({
-    totalTarget: 0,
-    dispersedUpToMay: 0,
-    remaining: 0,
+  // YTD Summary state – store both raw strings (for display) and parsed numbers (for progress bar)
+  const [ytdData, setYtdData] = useState({
+    totalTargetRaw: "",
+    dispersedUpToMayRaw: "",
+    remainingRaw: "",
+    totalTargetNumeric: 0,
+    dispersedUpToMayNumeric: 0,
+    remainingNumeric: 0,
   });
+  const [isLoadingYtd, setIsLoadingYtd] = useState(true);
+
+  // May-26 Fuel Savings data (derived from fuelRows)
+  const [maySavings, setMaySavings] = useState(null);
 
   // Helper: convert short month name to full month
   const shortToFullMonth = (short) => {
@@ -99,68 +104,72 @@ const FuelManagementPage = () => {
     return map[short] || null;
   };
 
-  // Calculate YTD summary (total target, dispersed up to May, remaining)
-  const calculateYtdSummary = (rows) => {
-    if (!rows.length)
-      return { totalTarget: 0, dispersedUpToMay: 0, remaining: 0 };
-
-    let totalTarget = 0;
-    let dispersedUpToMay = 0;
-    const monthsUpToMay = ["Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26"];
-
-    rows.forEach((row) => {
-      const month = row[0]?.toString().trim();
-      const target = parseFloat(row[1]) || 0;
-      const dispersion = parseFloat(row[2]) || 0;
-
-      totalTarget += target;
-      if (monthsUpToMay.includes(month)) {
-        dispersedUpToMay += dispersion;
-      }
-    });
-
-    const remaining = totalTarget - dispersedUpToMay;
-    return { totalTarget, dispersedUpToMay, remaining };
+  // Parse a value like "593.2K" -> 593200, "1.2M" -> 1200000, "1234" -> 1234
+  const parseMetricValue = (valueStr) => {
+    if (!valueStr || typeof valueStr !== "string") return 0;
+    const trimmed = valueStr.trim().toUpperCase();
+    const numberPart = parseFloat(trimmed.replace(/[^0-9.-]/g, ""));
+    if (isNaN(numberPart)) return 0;
+    if (trimmed.endsWith("K")) return numberPart * 1000;
+    if (trimmed.endsWith("M")) return numberPart * 1000000;
+    return numberPart;
   };
 
-  // Update YTD summary when fuelRows changes
-  useEffect(() => {
-    if (fuelRows.length > 0) {
-      const summary = calculateYtdSummary(fuelRows);
-      setYtdSummary(summary);
-    }
-  }, [fuelRows]);
+  // Load YTD summary from Fuel Dispersion sheet, columns D:E
+  const loadYtdFromSheet = async () => {
+    setIsLoadingYtd(true);
+    try {
+      const rows = await fetchGoogleSheetData("Fuel Dispersion", "D:E");
+      if (!rows || rows.length < 2) throw new Error("No YTD summary data");
 
-  // Calculate fuel savings when selected month changes
-  useEffect(() => {
-    if (!selectedMonth || dispersionData.length === 0) {
-      setFuelSavings(null);
-      return;
-    }
+      let targetRaw = "";
+      let dispersedRaw = "";
+      let remainingRaw = "";
 
-    const shortMonth = selectedMonth.split("-")[0];
-    const fullMonth = shortToFullMonth(shortMonth);
-    if (!fullMonth) {
-      setFuelSavings(null);
-      return;
-    }
+      for (let i = 0; i < rows.length; i++) {
+        const label = rows[i][0]?.toString().trim().toLowerCase();
+        const valueRaw = rows[i][1]?.toString().trim() || "";
+        if (label === "ytd target") {
+          targetRaw = valueRaw;
+        } else if (label === "dispersed till may") {
+          dispersedRaw = valueRaw;
+        } else if (label === "remaining fuel") {
+          remainingRaw = valueRaw;
+        }
+      }
 
-    const monthData = dispersionData.find(
-      (item) => item.month.toLowerCase() === fullMonth.toLowerCase(),
-    );
+      if (!targetRaw && rows.length >= 2) {
+        targetRaw = rows[1]?.[1]?.toString().trim() || "";
+        dispersedRaw = rows[2]?.[1]?.toString().trim() || "";
+        remainingRaw = rows[3]?.[1]?.toString().trim() || "";
+      }
 
-    if (monthData) {
-      const diff = monthData.y26 - monthData.y25;
-      setFuelSavings({
-        diff: diff,
-        isNegative: diff < 0,
-        y25: monthData.y25,
-        y26: monthData.y26,
+      const targetNum = parseMetricValue(targetRaw);
+      const dispersedNum = parseMetricValue(dispersedRaw);
+      const remainingNum = parseMetricValue(remainingRaw);
+
+      setYtdData({
+        totalTargetRaw: targetRaw,
+        dispersedUpToMayRaw: dispersedRaw,
+        remainingRaw: remainingRaw,
+        totalTargetNumeric: targetNum,
+        dispersedUpToMayNumeric: dispersedNum,
+        remainingNumeric: remainingNum,
       });
-    } else {
-      setFuelSavings(null);
+    } catch (error) {
+      console.error("Failed to fetch YTD summary:", error);
+      setYtdData({
+        totalTargetRaw: "",
+        dispersedUpToMayRaw: "",
+        remainingRaw: "",
+        totalTargetNumeric: 0,
+        dispersedUpToMayNumeric: 0,
+        remainingNumeric: 0,
+      });
+    } finally {
+      setIsLoadingYtd(false);
     }
-  }, [selectedMonth, dispersionData]);
+  };
 
   // Load Fuel Summary data
   const loadFuelSummary = async () => {
@@ -179,10 +188,24 @@ const FuelManagementPage = () => {
         const defaultMonth = months.includes("June-26") ? "June-26" : months[0];
         setSelectedMonth(defaultMonth);
       }
+
+      // Extract May-26 data for the Fuel Savings section
+      const mayRow = dataRows.find(
+        (row) => row[0]?.toString().trim() === "May-26",
+      );
+      if (mayRow) {
+        const target = parseFloat(mayRow[1]) || 0;
+        const dispersion = parseFloat(mayRow[2]) || 0;
+        const savings = target - dispersion; // positive = saved, negative = overshoot
+        setMaySavings({ target, dispersion, savings });
+      } else {
+        setMaySavings(null);
+      }
     } catch (error) {
       console.error("Failed to fetch Fuel Summary data:", error);
       setFuelRows([]);
       setAvailableMonths([]);
+      setMaySavings(null);
     } finally {
       setIsLoadingFuel(false);
     }
@@ -203,7 +226,7 @@ const FuelManagementPage = () => {
     }
   }, [selectedMonth, fuelRows]);
 
-  // Load Fuel Dispersion data
+  // Load Fuel Dispersion data (for chart)
   const loadFuelDispersion = async () => {
     setIsLoadingDispersion(true);
     try {
@@ -226,12 +249,6 @@ const FuelManagementPage = () => {
     }
   };
 
-  // Format number in Lakh (1 Lakh = 100,000) with 2 decimals
-  const formatInLakh = (num) => {
-    const lakh = num / 100000;
-    return lakh.toFixed(2);
-  };
-
   // Format raw liters with commas
   const formatLiters = (num) => {
     return num.toLocaleString("en-IN");
@@ -241,6 +258,7 @@ const FuelManagementPage = () => {
   useEffect(() => {
     loadFuelSummary();
     loadFuelDispersion();
+    loadYtdFromSheet();
   }, []);
 
   return (
@@ -259,53 +277,12 @@ const FuelManagementPage = () => {
           <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <h1 className="text-2xl font-bold text-white">Fuel Management</h1>
-
-              {/* Fuel Savings Badge */}
-              {!isLoadingDispersion && fuelSavings !== null && (
-                <div
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
-                    fuelSavings.isNegative
-                      ? "bg-red-500/10 border-red-500/50 text-red-400"
-                      : "bg-green-500/10 border-green-500/50 text-green-400"
-                  } animate-pulse`}
-                >
-                  {fuelSavings.isNegative ? (
-                    <TrendingDown size={18} />
-                  ) : (
-                    <TrendingUp size={18} />
-                  )}
-                  <span className="text-sm font-semibold">Fuel Savings</span>
-                  <span className="text-lg font-bold">
-                    {fuelSavings.diff > 0 ? "+" : ""}
-                    {fuelSavings.diff.toLocaleString()} L
-                  </span>
-                  <span className="text-xs opacity-70">(2026 vs 2025)</span>
-                </div>
-              )}
-
-              {!isLoadingDispersion &&
-                fuelSavings === null &&
-                dispersionData.length > 0 &&
-                selectedMonth && (
-                  <div className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-full">
-                    ⚠️ No data for {selectedMonth}
-                  </div>
-                )}
-
-              {isLoadingDispersion && (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 border border-gray-700">
-                  <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
-                  <span className="text-sm text-gray-400">
-                    Loading savings...
-                  </span>
-                </div>
-              )}
+              {/* Fuel Savings badge removed as requested */}
             </div>
 
-            {/* YTD Summary Card - Styled beautifully */}
-            {!isLoadingFuel && ytdSummary.totalTarget > 0 && (
+            {/* YTD Summary Card */}
+            {!isLoadingYtd && ytdData.totalTargetRaw && (
               <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0f1225] rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
-                {/* Card Header */}
                 <div className="px-5 pt-4 pb-2 border-b border-gray-700/50">
                   <div className="flex items-center gap-2">
                     <Calendar size={18} className="text-blue-400" />
@@ -318,9 +295,7 @@ const FuelManagementPage = () => {
                   </p>
                 </div>
 
-                {/* Stats Grid */}
                 <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Total Target */}
                   <div className="bg-[#0f1325]/50 rounded-xl p-4 text-center border border-gray-700/30 hover:border-blue-500/40 transition-all">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Target size={16} className="text-blue-400" />
@@ -329,14 +304,10 @@ const FuelManagementPage = () => {
                       </p>
                     </div>
                     <p className="text-2xl font-bold text-white">
-                      {formatInLakh(ytdSummary.totalTarget)} Lakh
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      ({formatLiters(ytdSummary.totalTarget)} L)
+                      {ytdData.totalTargetRaw}
                     </p>
                   </div>
 
-                  {/* Dispersed till May */}
                   <div className="bg-[#0f1325]/50 rounded-xl p-4 text-center border border-gray-700/30 hover:border-green-500/40 transition-all">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Droplet size={16} className="text-green-400" />
@@ -345,14 +316,10 @@ const FuelManagementPage = () => {
                       </p>
                     </div>
                     <p className="text-2xl font-bold text-green-400">
-                      {formatInLakh(ytdSummary.dispersedUpToMay)} Lakh
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      ({formatLiters(ytdSummary.dispersedUpToMay)} L)
+                      {ytdData.dispersedUpToMayRaw}
                     </p>
                   </div>
 
-                  {/* Remaining Fuel */}
                   <div className="bg-[#0f1325]/50 rounded-xl p-4 text-center border border-gray-700/30 hover:border-amber-500/40 transition-all">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <AlertCircle size={16} className="text-amber-400" />
@@ -361,35 +328,41 @@ const FuelManagementPage = () => {
                       </p>
                     </div>
                     <p className="text-2xl font-bold text-amber-400">
-                      {formatInLakh(ytdSummary.remaining)} Lakh
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      ({formatLiters(ytdSummary.remaining)} L)
+                      {ytdData.remainingRaw}
                     </p>
                   </div>
                 </div>
 
-                {/* Optional: Progress bar for remaining */}
-                <div className="px-5 pb-5">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>Remaining Target</span>
-                    <span>
-                      {(
-                        (ytdSummary.remaining / ytdSummary.totalTarget) *
-                        100
-                      ).toFixed(1)}
-                      %
-                    </span>
+                {ytdData.totalTargetNumeric > 0 && (
+                  <div className="px-5 pb-5">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Remaining Target</span>
+                      <span>
+                        {(
+                          (ytdData.remainingNumeric /
+                            ytdData.totalTargetNumeric) *
+                          100
+                        ).toFixed(1)}
+                        %
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-700"
+                        style={{
+                          width: `${(ytdData.remainingNumeric / ytdData.totalTargetNumeric) * 100}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-700"
-                      style={{
-                        width: `${(ytdSummary.remaining / ytdSummary.totalTarget) * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
+                )}
+              </div>
+            )}
+
+            {isLoadingYtd && (
+              <div className="bg-[#1a1f3a] rounded-2xl border border-gray-700 p-6 text-center">
+                <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-gray-400 text-sm">Loading YTD summary...</p>
               </div>
             )}
           </div>
@@ -402,6 +375,80 @@ const FuelManagementPage = () => {
             fuelData={selectedFuelData}
             isLoading={isLoadingFuel}
           />
+
+          {/* NEW: Fuel Savings Section for May-26 */}
+          {!isLoadingFuel && maySavings && (
+            <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0f1225] rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
+              <div className="px-5 pt-4 pb-2 border-b border-gray-700/50">
+                <div className="flex items-center gap-2">
+                  <Gauge size={18} className="text-emerald-400" />
+                  <h2 className="text-md font-semibold tracking-wide text-gray-200">
+                    Fuel Savings Via Portal – May 2026
+                  </h2>
+                </div>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  Performance vs monthly target
+                </p>
+              </div>
+
+              <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Target */}
+                <div className="bg-[#0f1325]/50 rounded-xl p-4 text-center border border-gray-700/30 hover:border-blue-500/40 transition-all">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Target size={16} className="text-blue-400" />
+                    <p className="text-gray-300 text-xs uppercase tracking-wider">
+                      Monthly Target
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-white">
+                    {formatLiters(maySavings.target)} L
+                  </p>
+                </div>
+
+                {/* Dispersion */}
+                <div className="bg-[#0f1325]/50 rounded-xl p-4 text-center border border-gray-700/30 hover:border-purple-500/40 transition-all">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Droplet size={16} className="text-purple-400" />
+                    <p className="text-gray-300 text-xs uppercase tracking-wider">
+                      Actual Dispersion
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {formatLiters(maySavings.dispersion)} L
+                  </p>
+                </div>
+
+                {/* Fuel Savings (Target - Dispersion) */}
+                <div className="bg-[#0f1325]/50 rounded-xl p-4 text-center border border-gray-700/30 hover:border-emerald-500/40 transition-all">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    {maySavings.savings >= 0 ? (
+                      <TrendingUp size={16} className="text-emerald-400" />
+                    ) : (
+                      <TrendingDown size={16} className="text-red-400" />
+                    )}
+                    <p className="text-gray-300 text-xs uppercase tracking-wider">
+                      Fuel Savings
+                    </p>
+                  </div>
+                  <p
+                    className={`text-2xl font-bold ${
+                      maySavings.savings >= 0
+                        ? "text-emerald-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {maySavings.savings >= 0 ? "+" : ""}
+                    {formatLiters(Math.abs(maySavings.savings))} L
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {maySavings.savings >= 0
+                      ? "Saved vs target"
+                      : "Overshoot vs target"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Fuel Dispersion Component */}
           <FuelDispersion
